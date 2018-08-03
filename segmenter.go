@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ling0322/lexicon"
 	"github.com/pkg/errors"
@@ -104,4 +105,17 @@ func NewSegmenter(configFile string) (*Segmenter, error) {
 		uniCost: uniCost,
 		lexicon: lexicon,
 	}, err
+}
+
+// RemoveSpace removes spaces in segmentation result
+func RemoveSpace(words []string) []string {
+	newWords := []string{}
+	for _, word := range words {
+		word = strings.TrimSpace(word)
+		if word != "" {
+			newWords = append(newWords, word)
+		}
+	}
+
+	return newWords
 }

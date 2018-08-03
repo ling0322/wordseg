@@ -27,9 +27,11 @@ func checkAndFatal(err error) {
 
 func main() {
 	var wsConfig, inputFile, outputFile string
+	var brkField int
 	flag.StringVar(&wsConfig, "c", "", "model config file for wordseg")
 	flag.StringVar(&inputFile, "i", "-", "input file, '-' for stdin")
 	flag.StringVar(&outputFile, "o", "-", "output file, '-' for stdout")
+	flag.IntVar(&brkField, "f", -1, "segment specific field in TSV file, -1 to segment all")
 	flag.Parse()
 
 	// Check parameters
@@ -63,11 +65,25 @@ func main() {
 
 	// Break line by line
 	scanner := bufio.NewScanner(r)
+	buf := make([]byte, 64*1024*1024)
+	scanner.Buffer(buf, len(buf))
 	for scanner.Scan() {
-		words := s.Seg(scanner.Text())
-		w.Write([]byte(strings.Join(words, " ") + "\n"))
+		if brkField >= 0 {
+			line := scanner.Text()
+			fields := strings.Split(line, "\t")
+			if len(fields) <= brkField {
+				if len(line) > 100 {
+					line = line[:100] + "..."
+				}
+				log.Fatal(fmt.Sprintf("unexpected line: %s", line))
+			}
+			words := wordseg.RemoveSpace(s.Seg(fields[brkField]))
+			fields[brkField] = strings.Join(words, " ")
+			w.Write([]byte(strings.Join(fields, "\t") + "\n"))
+		} else {
+			words := wordseg.RemoveSpace(s.Seg(scanner.Text()))
+			w.Write([]byte(strings.Join(words, " ") + "\n"))
+		}
 	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+	checkAndFatal(scanner.Err())
 }
